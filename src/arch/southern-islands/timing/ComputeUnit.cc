@@ -199,18 +199,25 @@ void ComputeUnit::Fetch(FetchBuffer *fetch_buffer,
 	int instructions_processed = 0;
 
 	// Fetch the instructions
-	for (auto it = wavefront_pool->begin(),
-			e = wavefront_pool->end();
-			it != e;
-			++it)
+	for (int i = 0; i < max_wavefronts_per_wavefront_pool; i++)
 	{
+		// Stall if fetch buffer is full
+		assert(fetch_buffer->getSize() <= fetch_buffer_size);
+		if (fetch_buffer->getSize() == fetch_buffer_size)
+			break;
+
+		// Get wavefront pool entry index
+		unsigned index = (fetch_buffer->getLastFetchedWavefrontIndex() + i + 1)
+						% max_wavefronts_per_wavefront_pool;
+
 		// Get wavefront pool entry
-		WavefrontPoolEntry *wavefront_pool_entry = it->get();
+		WavefrontPoolEntry *wavefront_pool_entry = (*(wavefront_pool->begin() +
+					index)).get();
 
 		// Get wavefront
 		Wavefront *wavefront = wavefront_pool_entry->getWavefront();
 
-		// No waverfront
+		// No wavefront
 		if (!wavefront)
 			continue;
 
@@ -219,6 +226,7 @@ void ComputeUnit::Fetch(FetchBuffer *fetch_buffer,
 		assert(wavefront->getWavefrontPoolEntry() ==
 				wavefront_pool_entry);
 
+#if 0
 		// This should always be checked, regardless of how many
 		// instructions have been fetched
 		if (wavefront_pool_entry->ready_next_cycle)
@@ -227,15 +235,22 @@ void ComputeUnit::Fetch(FetchBuffer *fetch_buffer,
 			wavefront_pool_entry->ready_next_cycle = false;
 			continue;
 		}
+#endif
+
+		// Check if the entry is ready to fetch
+		if (!fetch_buffer->IsEmptyEntry(index))
+			continue;
 
 		// Only fetch a fixed number of instructions per cycle
 		if (instructions_processed == fetch_width)
-			continue;
+			break;
 
+#if 0
 		// Wavefront is not ready (previous instructions is still
 		// in flight
 		if (!wavefront_pool_entry->ready)
 			continue;
+#endif
 
 		// If the wavefront finishes, there still may be outstanding
 		// memory operations, so if the entry is marked finished
@@ -246,6 +261,7 @@ void ComputeUnit::Fetch(FetchBuffer *fetch_buffer,
 			continue;
 		}
 
+#if 0
 		// Wavefront is finished but other wavefronts from the
 		// workgroup remain.  There may still be outstanding
 		// memory operations, but no more instructions should
@@ -290,11 +306,8 @@ void ComputeUnit::Fetch(FetchBuffer *fetch_buffer,
 		// Wavefront is ready but waiting at barrier
 		if (wavefront_pool_entry->wait_for_barrier)
 			continue;
+#endif
 
-		// Stall if fetch buffer is full
-		assert(fetch_buffer->getSize() <= fetch_buffer_size);
-		if (fetch_buffer->getSize() == fetch_buffer_size)
-			continue;
 
 		// Emulate instructions
 		wavefront->Execute();
@@ -403,7 +416,8 @@ void ComputeUnit::Fetch(FetchBuffer *fetch_buffer,
 
 		// Insert uop into fetch buffer
 		uop->getWorkGroup()->inflight_instructions++;
-		fetch_buffer->addUop(std::move(uop));
+
+		fetch_buffer->addUop(index, std::move(uop));
 
 		instructions_processed++;
 		num_total_instructions++;

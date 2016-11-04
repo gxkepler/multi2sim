@@ -20,12 +20,27 @@
 #include <cassert>
 
 #include "FetchBuffer.h"
+#include "ComputeUnit.h"
 
 
 namespace SI
 {
 
-void FetchBuffer::Remove(std::list<std::unique_ptr<Uop>>::iterator it)
+FetchBuffer::FetchBuffer(int id, ComputeUnit *compute_unit) :
+					id(id),
+					compute_unit(compute_unit)
+			{
+				// Initialize the uop buffer
+				buffer.resize(compute_unit->fetch_buffer_size * compute_unit->fetch_width);
+
+				// Initialize the last fetched warp index
+				last_fetched_wavefront_index = -1;
+
+				// Initialize the last dispatched warp index
+				last_issued_wavefront_index = -1;
+			}
+
+void FetchBuffer::Remove(std::vector<std::unique_ptr<Uop>>::iterator it)
 {
 	assert(it != buffer.end());
 	buffer.erase(it);

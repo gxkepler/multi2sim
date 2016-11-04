@@ -26,6 +26,7 @@
 #include "Uop.h"
 
 
+
 namespace SI
 {
 
@@ -43,17 +44,18 @@ class FetchBuffer
 	ComputeUnit *compute_unit;
 
 	// Buffer of instructions
-	std::list<std::unique_ptr<Uop>> buffer;
+	std::vector<std::unique_ptr<Uop>> buffer;
+
+	// Index of last fetched wavefront in the fetch buffer
+	int last_fetched_wavefront_index;
+
+	// Index of last dispatched wavefront in the fetch buffer
+	int last_issued_wavefront_index;
 
 public:
 	
 	/// Constructor
-	FetchBuffer(int id, ComputeUnit *compute_unit) :
-			id(id),
-			compute_unit(compute_unit)
-
-	{
-	}
+	FetchBuffer(int id, ComputeUnit *compute_unit);
 
 	/// Return the number of uops in the fetch buffer
 	int getSize() { return buffer.size(); }
@@ -62,25 +64,55 @@ public:
 	int getId() const { return id; }
 
 	/// Add instruction to the end of the buffer
-	void addUop(std::unique_ptr<SI::Uop> uop)
+	void addUop(int index, std::unique_ptr<SI::Uop> uop)
 	{
-		buffer.push_back(std::move(uop));
+		buffer[index] = std::move(uop);
 	}
 
 	/// Return an iterator to the first uop in the fetch buffer
-	std::list<std::unique_ptr<Uop>>::iterator begin()
+	std::vector<std::unique_ptr<Uop>>::iterator begin()
 	{
 		return buffer.begin();
 	}
 
 	/// Return a past-the-end iterator to the fetch buffer
-	std::list<std::unique_ptr<Uop>>::iterator end()
+	std::vector<std::unique_ptr<Uop>>::iterator end()
 	{
 		return buffer.end();
 	}
 
 	/// Remove the uop pointed to by the given iterator.
-	void Remove(std::list<std::unique_ptr<Uop>>::iterator it);
+	void Remove(std::vector<std::unique_ptr<Uop>>::iterator it);
+
+	/// Check if the given slot in the entry is valid(two slots per entry)
+	bool IsEmptyEntry(int index) const
+	{
+		if (buffer[index] == nullptr)
+			return true;
+		else
+			return false;
+	}
+	/// Return the id of last fetched wavefront index in fetch buffer
+	int getLastFetchedWavefrontIndex() const
+	{
+		return last_fetched_wavefront_index;
+	}
+
+	/// Return the id of last dispatched wavefront index in fetch buffer
+	int getLastIssuedWavefrontIndex() const
+	{
+		return last_issued_wavefront_index;
+	}
+
+	void setLastFatchedWavefrontIndex(int index)
+	{
+		last_fetched_wavefront_index = index;
+ 	}
+
+	void setLastIssuedWavefrontIndex(int index)
+	{
+		last_issued_wavefront_index = index;
+	}
 };
 
 }

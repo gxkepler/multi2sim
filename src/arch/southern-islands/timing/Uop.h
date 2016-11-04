@@ -84,6 +84,12 @@ class Uop
 	// Unique identifier of the associated wavefront pool
 	int wavefront_pool_id;
 
+	// Source register index
+	int source_register_index[4];
+
+	// Destination register index
+	int destination_register_index[4];
+
 public:
 
 	/// Constructor
@@ -171,6 +177,30 @@ public:
 	void setInstruction(Instruction *instruction)
 	{
 		this->instruction = *instruction;
+	}
+
+	/// Get source register index by the given index
+	int getSourceRegisterIndex(unsigned index)
+	{
+		return source_register_index[index];
+	}
+
+	/// Get destination register index by the given index
+	int getDestinationRegisterIndex(unsigned index)
+	{
+		return destination_register_index[index];
+	}
+
+	/// Set source register index
+	void setSourceRegisterIndex(unsigned index, int value)
+	{
+		source_register_index[index] = value;
+	}
+
+	/// Set destination register index
+	void setDestinationRegisterIndex(unsigned index, int value)
+	{
+		destination_register_index[index] = value;
 	}
 
 	/// Cycle in which the uop is first ready after fetch
